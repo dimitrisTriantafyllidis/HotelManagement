@@ -12,25 +12,32 @@ import {
 } from '@mui/material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import theme from './theme';
+import { LoginDto } from '../models/types';
+import { login } from '../Services/AuthService';
 
 // Default Material UI theme
 const defaultTheme = createTheme();
 
 const LoginPage: React.FC = () => {
-  const [email, setEmail] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
+
   const [emailError, setEmailError] = useState<string>('');
   const [passwordError, setPasswordError] = useState<string>('');
+    const [error, setError] = useState('');
+
+  const [credentials, setCredentials] = useState<LoginDto>({
+    email: '',
+    password: ''
+  });
   const navigate = useNavigate();
 
   const validateForm = (): boolean => {
     let isValid = true;
 
     // Email validation
-    if (!email) {
+    if (!credentials.email) {
       setEmailError('Email is required');
       isValid = false;
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
+    } else if (!/\S+@\S+\.\S+/.test(credentials.email)) {
       setEmailError('Email is invalid');
       isValid = false;
     } else {
@@ -38,10 +45,10 @@ const LoginPage: React.FC = () => {
     }
 
     // Password validation
-    if (!password) {
+    if (!credentials.password) {
       setPasswordError('Password is required');
       isValid = false;
-    } else if (password.length < 6) {
+    } else if (credentials.password.length < 6) {
       setPasswordError('Password must be at least 6 characters');
       isValid = false;
     } else {
@@ -50,15 +57,22 @@ const LoginPage: React.FC = () => {
 
     return isValid;
   };
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      setCredentials({ ...credentials, [e.target.name]: e.target.value });
+    };
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (validateForm()) {
       // Here you would typically make an API call to authenticate the user
-      console.log('Login submitted:', { email, password });
-      
-      // For demo purposes, just navigate to home
-      navigate('/');
+      try {
+            const result = await login(credentials);
+            localStorage.setItem('token', result.token);
+            navigate('/home');
+          } catch (err) {
+            setError('Invalid login credentials');
+            console.error(err);
+          }
     }
   };
 
@@ -87,8 +101,8 @@ const LoginPage: React.FC = () => {
               name="email"
               autoComplete="email"
               autoFocus
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={credentials.email}
+              onChange={handleChange}
               error={!!emailError}
               helperText={emailError}
             />
@@ -101,8 +115,8 @@ const LoginPage: React.FC = () => {
               type="password"
               id="password"
               autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              value={credentials.password}
+              onChange={handleChange}
               error={!!passwordError}
               helperText={passwordError}
             />
@@ -113,7 +127,10 @@ const LoginPage: React.FC = () => {
               sx={{ mt: 3, mb: 2 }}
             >
               Sign In
-            </Button>
+            </Button><form>
+                    {error && <p style={{ color: 'red' }}>{error}</p>}
+
+            </form>
             <Grid container justifyContent="space-between" sx={{ mt: 2 }}>
             <Grid>
                 <Link href="#" variant="body2" sx={{ textDecoration: 'none' }}>

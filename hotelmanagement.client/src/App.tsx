@@ -29,37 +29,18 @@ function App() {
         },
         // ... more bookings
       ];    
-      const initialBooking = {
-        id: '',
-        firstName: '',
-        lastName: '',
-        email: '',
-        phoneNumber: '',
-        dateOfArrival: null,
-        dateOfDeparture: null,
-        appartmentId: '',
-      };
-    
-      const appartments = [
-        { id: '1', name: 'Διαμέρισμα Α' },
-        { id: '2', name: 'Διαμέρισμα Β' },
-        { id: '3', name: 'Διαμέρισμα Γ' },
-      ];
-    
-      const handleSave = (booking: any) => {
-        console.log('Saving booking:', booking);
-        // Add your save logic here
-      };
+      
       return (
         <>
             <ThemeProvider theme={theme}>
             <CssBaseline />
                 <Routes>
                     <Route path="/" element={<Home />} />
+                    <Route path="/home" element={<Home />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
                     <Route path="/bookings" element={<BookingList bookings={bookings} />} />
-                    <Route path="/bookingform" element={<BookingForm booking={initialBooking} appartments={appartments} onSave={handleSave} />} />
+                    <Route path="/bookingform" element={<BookingForm/>} />
                     <Route path="/checkin" element={<OnlineCheckInForm />} />
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/apartmentlist" element={<ApartmentListPage />} />

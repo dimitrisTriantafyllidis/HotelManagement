@@ -6,12 +6,7 @@ using System.Threading.Tasks;
 
 namespace HotelManagement.Models
 {
-    public enum AppartmentStatus
+    internal class UpdateGuestDto
     {
-        Free,
-        PendingCleaning,
-        Cleaning,
-        ReadyForCheckIn,
-        CheckOut,
     }
 }

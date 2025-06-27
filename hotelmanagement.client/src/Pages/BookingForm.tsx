@@ -34,59 +34,111 @@ import { useFormik } from 'formik';
 import * as yup from 'yup';
 import { useNavigate } from 'react-router-dom';
 import { enUS, el } from 'date-fns/locale';
+import { ApartmentDto, BookingDto, GuestDto } from '../models/types';
+import { isUndefined } from 'util';
+import { createBooking } from '../Services/BookingsService';
+import { getApartment, getApartments } from '../Services/ApartmentService';
 
-interface Appartment {
-  id: string;
-  name: string;
-}
 
-interface Booking {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phoneNumber: string;
-  dateOfArrival: Date | null;
-  dateOfDeparture: Date | null;
-  appartmentId: string;
-}
 
-interface BookingFormProps {
-  booking: Booking;
-  appartments: Appartment[];
-  onSave: (booking: Booking) => void;
-}
-
-const BookingForm: React.FC<BookingFormProps> = ({ booking, appartments, onSave }) => {
+const BookingForm= () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const validationSchema = yup.object({
-    firstName: yup.string().required('Το όνομα είναι απαραίτητο'),
-    lastName: yup.string().required('Το επώνυμο είναι απαραίτητο'),
-    email: yup.string().email('Εισάγετε ένα έγκυρο email').required('Το email είναι απαραίτητο'),
-    phoneNumber: yup.string().required('Το τηλέφωνο είναι απαραίτητο'),
-    dateOfArrival: yup.date().required('Η ημερομηνία άφιξης είναι απαραίτητη').nullable(),
-    dateOfDeparture: yup.date()
-      .required('Η ημερομηνία αναχώρησης είναι απαραίτητη')
-      .nullable()
-      .when('dateOfArrival', (dateOfArrival, schema) => {
-        if (dateOfArrival) {
-          return schema.min(dateOfArrival, 'Η αναχώρηση πρέπει να είναι μετά την άφιξη');
-        }
-        return schema;
-      }),
-    appartmentId: yup.string().required('Η επιλογή διαμερίσματος είναι απαραίτητη')
+  const [apartment, setApartment] = useState<ApartmentDto | null>(null);
+
+  
+  const [apartments, setApartments] = useState<ApartmentDto[]>([]);
+
+  const [selectedGuest,setSelectedGuest]= useState<GuestDto>({
+      id: '',
+      fullName: '',
+      identityNo: '',
+      nationality: '',
+      bookingId: ''
   });
 
-  const formik = useFormik({
+  const [booking,setBooking]= useState<BookingDto>({
+        id : '',
+        firstName :'',
+        lastName: '',
+        apartmentId: '',
+        email:'',
+        phoneNumber:'',
+        apartment: undefined,
+        checkInDate: null,
+        checkOutDate:  null,
+        guests: undefined,
+        checkIn: undefined
+  });
+
+ const validationSchema = yup.object({
+  firstName: yup.string().required('Το όνομα είναι απαραίτητο'),
+  lastName: yup.string().required('Το επώνυμο είναι απαραίτητο'),
+  email: yup.string().email('Εισάγετε ένα έγκυρο email').required('Το email είναι απαραίτητο'),
+  phone: yup.string().required('Το τηλέφωνο είναι απαραίτητο'),
+  
+  checkInDate: yup.date()
+    .transform((value, originalValue) =>
+      originalValue === "" ? null : new Date(originalValue)
+    )
+    .nullable()
+    .required('Η ημερομηνία άφιξης είναι απαραίτητη'),
+
+  checkOutDate: yup.date()
+    .transform((value, originalValue) =>
+      originalValue === "" ? null : new Date(originalValue)
+    )
+    .nullable()
+    .required('Η ημερομηνία αναχώρησης είναι απαραίτητη')
+    .when('checkInDate', (checkInDate, schema) => {
+      return checkInDate
+        ? schema.min(checkInDate, 'Η αναχώρηση πρέπει να είναι μετά την άφιξη')
+        : schema;
+    }),
+
+  apartmentId: yup.string().required('Η επιλογή διαμερίσματος είναι απαραίτητη'),
+});
+
+ const formik = useFormik({
     initialValues: booking,
     validationSchema: validationSchema,
     onSubmit: (values) => {
       setIsSubmitting(true);
-      onSave(values);
+      createBookingObject(values);
+
+
     },
   });
+
+  async function createBookingObject(booking: BookingDto): Promise<void> {
+        try {
+          const response = await createBooking(booking);
+
+          if (!response.ok) {
+            throw new Error(`Error: ${response.status}`);
+          }
+
+          const result = await response.json();
+          console.log('Booking created:', result);
+        } catch (error) {
+          console.error('Failed to create booking:', error);
+        }
+  }
+
+  useEffect(() => {
+      async function fetchApartments() {
+        try {
+          const data = await getApartments(); // data είναι ήδη parsed
+          setApartments(data);
+        } catch (error) {
+          console.error('Αποτυχία:', error);
+        }
+      }
+
+      fetchApartments();
+    }, []);
+
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={el}>
@@ -126,20 +178,16 @@ const BookingForm: React.FC<BookingFormProps> = ({ booking, appartments, onSave 
 
                 <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, mb: 2 }}>
                   <TextField
-                    fullWidth
-                    id="firstName"
-                    name="firstName"
-                    label="Όνομα"
-                    value={formik.values.firstName}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    error={formik.touched.firstName && Boolean(formik.errors.firstName)}
-                    helperText={formik.touched.firstName && formik.errors.firstName}
-                    variant="outlined"
-                    InputProps={{
-                      sx: { borderRadius: 2, height: 56 }
-                    }}
-                  />
+                      fullWidth
+                      id="firstName"
+                      name="firstName"
+                      label="Όνομα"
+                      value={formik.values.firstName}
+                      onChange={formik.handleChange}
+                      onBlur={formik.handleBlur}
+                      error={formik.touched.firstName && Boolean(formik.errors.firstName)}
+                      helperText={formik.touched.firstName && formik.errors.firstName}
+                    />
 
                   <TextField
                     fullWidth
@@ -204,41 +252,42 @@ const BookingForm: React.FC<BookingFormProps> = ({ booking, appartments, onSave 
                 <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, mb: 2 }}>
                   <DatePicker
                     label="Άφιξη"
-                    value={formik.values.dateOfArrival}
-                    onChange={(value) => formik.setFieldValue('dateOfArrival', value)}
+                    value={formik.values.checkInDate}
+                    onChange={(value) => formik.setFieldValue('checkInDate', value)}
                     minDate={new Date()}
                     slotProps={{
                       textField: {
                         fullWidth: true,
-                        error: formik.touched.dateOfArrival && Boolean(formik.errors.dateOfArrival),
-                        helperText: formik.touched.dateOfArrival && formik.errors.dateOfArrival,
+                        error: formik.touched.checkInDate && Boolean(formik.errors.checkInDate),
+                        helperText: formik.touched.checkInDate && formik.errors.checkInDate,
                       },
                     }}
                   />
 
                   <DatePicker
                     label="Αναχώρηση"
-                    value={formik.values.dateOfDeparture}
-                    onChange={(value) => formik.setFieldValue('dateOfDeparture', value)}
-                    minDate={formik.values.dateOfArrival || new Date()}
+                    value={formik.values.checkOutDate}
+                    onChange={(value) => formik.setFieldValue('checkOutDate', value)}
+                    minDate={formik.values.checkInDate || new Date()}
                     slotProps={{
                       textField: {
                         fullWidth: true,
-                        error: formik.touched.dateOfDeparture && Boolean(formik.errors.dateOfDeparture),
-                        helperText: formik.touched.dateOfDeparture && formik.errors.dateOfDeparture,
+                        error: formik.touched.checkOutDate && Boolean(formik.errors.checkOutDate),
+                        helperText: formik.touched.checkOutDate && formik.errors.checkOutDate,
                       },
                     }}
                   />
                 </Box>
 
-                <FormControl fullWidth sx={{ mb: 2 }} error={formik.touched.appartmentId && Boolean(formik.errors.appartmentId)}>
+                <FormControl fullWidth sx={{ mb: 2 }} error={formik.touched.apartmentId && Boolean(formik.errors.apartmentId)}>
                   <InputLabel id="appartment-label">Διαμέρισμα</InputLabel>
                   <Select
                     labelId="appartment-label"
-                    id="appartmentId"
-                    name="appartmentId"
-                    value={formik.values.appartmentId}
-                    label="Διαμέρισμα"
+                    id="apartmentId"
+                    name="name"
+                    value={
+                        apartments.find((a) => a.id === formik.values.apartmentId)?.name || ''
+                      }
                     onChange={formik.handleChange}
                     onBlur={formik.handleBlur}
                     sx={{ borderRadius: 2, height: 56 }}
@@ -246,14 +295,14 @@ const BookingForm: React.FC<BookingFormProps> = ({ booking, appartments, onSave 
                     <MenuItem value="" disabled>
                       -- Επιλογή Διαμερίσματος --
                     </MenuItem>
-                    {appartments.map((appartment) => (
-                      <MenuItem key={appartment.id} value={appartment.id}>
-                        {appartment.name}
+                    {apartments.map((apartments) => (
+                      <MenuItem key={apartments.id} value={apartments.id}>
+                        {apartments.name}
                       </MenuItem>
                     ))}
                   </Select>
-                  {formik.touched.appartmentId && formik.errors.appartmentId && (
-                    <FormHelperText>{formik.errors.appartmentId}</FormHelperText>
+                  {formik.touched.apartmentId && formik.errors.apartmentId && (
+                    <FormHelperText>{formik.errors.apartmentId}</FormHelperText>
                   )}
                 </FormControl>
               </Box>
