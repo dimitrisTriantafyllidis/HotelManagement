@@ -2,6 +2,7 @@ using HotelManagement.DataAccess;
 using HotelManagement.Models.Mappings;
 using HotelManagement.Models.Models;
 using HotelManagement.Server;
+using HotelManagement.Server.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -12,6 +13,10 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 10 * 1024 * 1024; // 10 MB
+});
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -53,6 +58,10 @@ builder.Services.AddAuthentication(options =>
 
 // Configure AutoMapper
 builder.Services.AddAutoMapper(typeof(MappingProfile));
+
+// Register services
+builder.Services.AddScoped<IPdfService, PdfService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 // Optional: CORS (if using from frontend apps)
 builder.Services.AddCors(options =>

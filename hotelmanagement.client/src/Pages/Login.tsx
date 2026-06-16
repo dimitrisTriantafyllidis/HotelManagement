@@ -1,152 +1,123 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Box, 
-  Button, 
-  Container, 
-  CssBaseline, 
-  Grid, 
-  Link, 
-  TextField, 
-  Typography 
+import {
+  Box, Button, TextField, Typography, IconButton, Link,
+  CircularProgress, Alert,
 } from '@mui/material';
-import { createTheme, ThemeProvider } from '@mui/material/styles';
-import theme from './theme';
-import { LoginDto } from '../models/types';
+import { Visibility, VisibilityOff, Language as LangIcon } from '@mui/icons-material';
+import { motion } from 'framer-motion';
 import { login } from '../Services/AuthService';
-
-// Default Material UI theme
-const defaultTheme = createTheme();
+import { useAuth } from '../auth/AuthContext';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const LoginPage: React.FC = () => {
-
-  const [emailError, setEmailError] = useState<string>('');
-  const [passwordError, setPasswordError] = useState<string>('');
-    const [error, setError] = useState('');
-
-  const [credentials, setCredentials] = useState<LoginDto>({
-    email: '',
-    password: ''
-  });
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { login: authLogin } = useAuth();
+  const { t, language, setLanguage } = useLanguage();
 
-  const validateForm = (): boolean => {
-    let isValid = true;
-
-    // Email validation
-    if (!credentials.email) {
-      setEmailError('Email is required');
-      isValid = false;
-    } else if (!/\S+@\S+\.\S+/.test(credentials.email)) {
-      setEmailError('Email is invalid');
-      isValid = false;
-    } else {
-      setEmailError('');
-    }
-
-    // Password validation
-    if (!credentials.password) {
-      setPasswordError('Password is required');
-      isValid = false;
-    } else if (credentials.password.length < 6) {
-      setPasswordError('Password must be at least 6 characters');
-      isValid = false;
-    } else {
-      setPasswordError('');
-    }
-
-    return isValid;
-  };
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      setCredentials({ ...credentials, [e.target.name]: e.target.value });
-    };
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (validateForm()) {
-      // Here you would typically make an API call to authenticate the user
-      try {
-            const result = await login(credentials);
-            localStorage.setItem('token', result.token);
-            navigate('/home');
-          } catch (err) {
-            setError('Invalid login credentials');
-            console.error(err);
-          }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!email || !password) { setError(t('auth.emailRequired')); return; }
+    setLoading(true);
+    try {
+      const result = await login({ email, password });
+      authLogin(result);
+      navigate('/');
+    } catch {
+      setError(t('auth.invalidCredentials'));
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <ThemeProvider theme={theme}>
-      <Container component="main" maxWidth="xs">
-        <CssBaseline />
-        <Box
-          sx={{
-            marginTop: 8,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-          }}
+    <Box sx={{
+      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      bgcolor: 'var(--bg-primary)',
+    }}>
+      <Box sx={{ position: 'absolute', top: 20, right: 20 }}>
+        <IconButton
+          size="small"
+          onClick={() => setLanguage(language === 'en' ? 'el' : 'en')}
+          sx={{ color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 2, px: 1, gap: 0.5 }}
         >
-          <Typography component="h1" variant="h5">
-            Sign in
-          </Typography>
-          <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              id="email"
-              label="Email Address"
-              name="email"
-              autoComplete="email"
-              autoFocus
-              value={credentials.email}
-              onChange={handleChange}
-              error={!!emailError}
-              helperText={emailError}
-            />
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              name="password"
-              label="Password"
-              type="password"
-              id="password"
-              autoComplete="current-password"
-              value={credentials.password}
-              onChange={handleChange}
-              error={!!passwordError}
-              helperText={passwordError}
-            />
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              sx={{ mt: 3, mb: 2 }}
-            >
-              Sign In
-            </Button><form>
-                    {error && <p style={{ color: 'red' }}>{error}</p>}
+          <LangIcon sx={{ fontSize: 16 }} />
+          <Typography sx={{ fontWeight: 600, fontSize: '0.625rem' }}>{language === 'en' ? 'EL' : 'EN'}</Typography>
+        </IconButton>
+      </Box>
 
-            </form>
-            <Grid container justifyContent="space-between" sx={{ mt: 2 }}>
-            <Grid>
-                <Link href="#" variant="body2" sx={{ textDecoration: 'none' }}>
-                Forgot password?
-                </Link>
-            </Grid>
-            <Grid>
-                <Link href="/register" variant="body2" sx={{ textDecoration: 'none' }}>
-                Don't have an account? Sign Up
-                </Link>
-            </Grid>
-            </Grid>
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+        <Box sx={{
+          width: { xs: 340, sm: 400 }, p: { xs: 3, sm: 4 }, borderRadius: 3,
+          bgcolor: 'var(--bg-surface)', border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow-xl)',
+        }}>
+          <Box sx={{ textAlign: 'center', mb: 4 }}>
+            <Box sx={{
+              width: 40, height: 40, borderRadius: 2, mx: 'auto', mb: 2,
+              background: 'linear-gradient(135deg, #C4704B 0%, #D4A853 100%)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '1rem', fontWeight: 700, color: '#fff',
+            }}>
+              V
+            </Box>
+            <Typography variant="h3" sx={{ mb: 0.5, color: 'var(--text-primary)' }}>{t('auth.loginWelcome')}</Typography>
+            <Typography variant="body2" sx={{ color: 'var(--text-secondary)' }}>{t('auth.loginSubtitle')}</Typography>
+          </Box>
+
+          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+          <Box component="form" onSubmit={handleSubmit}>
+            <Typography variant="caption" sx={{ mb: 0.5, display: 'block', color: 'var(--text-secondary)' }}>{t('auth.email')}</Typography>
+            <TextField fullWidth type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+              placeholder="admin@velora.com" sx={{ mb: 2 }} autoFocus autoComplete="email" />
+
+            <Typography variant="caption" sx={{ mb: 0.5, display: 'block', color: 'var(--text-secondary)' }}>{t('auth.password')}</Typography>
+            <TextField fullWidth type={showPassword ? 'text' : 'password'} value={password}
+              onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" autoComplete="current-password"
+              InputProps={{
+                endAdornment: (
+                  <IconButton onClick={() => setShowPassword(!showPassword)} edge="end" size="small" sx={{ color: 'var(--text-muted)' }}>
+                    {showPassword ? <VisibilityOff sx={{ fontSize: 16 }} /> : <Visibility sx={{ fontSize: 16 }} />}
+                  </IconButton>
+                ),
+              }}
+              sx={{ mb: 3 }}
+            />
+
+            <Button type="submit" fullWidth variant="contained" disabled={loading}
+              sx={{
+                py: 1.25, borderRadius: 2,
+                bgcolor: '#C4704B', '&:hover': { bgcolor: '#A85A38' },
+              }}
+            >
+              {loading ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : t('auth.signIn')}
+            </Button>
+          </Box>
+
+          <Box sx={{ mt: 2.5, textAlign: 'center' }}>
+            <Link href="#" underline="none" sx={{ color: 'var(--text-muted)', fontSize: '0.8125rem', '&:hover': { color: '#C4704B' } }}>
+              {t('auth.forgotPassword')}
+            </Link>
+          </Box>
+
+          <Box sx={{ mt: 3, pt: 3, textAlign: 'center', borderTop: '1px solid var(--border)' }}>
+            <Typography variant="body2" sx={{ color: 'var(--text-secondary)' }}>
+              {t('auth.noAccount')}{' '}
+              <Link href="/register" underline="none" sx={{ color: '#C4704B', fontWeight: 600, '&:hover': { color: '#A85A38' } }}>
+                {t('auth.signUp')}
+              </Link>
+            </Typography>
           </Box>
         </Box>
-      </Container>
-    </ThemeProvider>
+      </motion.div>
+    </Box>
   );
 };
 

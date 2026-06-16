@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using HotelManagement.Models.DTOs.Create;
+using HotelManagement.Models.DTOs.Update;
 using HotelManagement.Models.DTOs.View;
 using HotelManagement.Models.Models;
 using System;
@@ -22,7 +23,10 @@ namespace HotelManagement.Models.Mappings
             CreateMap<Guest, CreateGuestDto>().ReverseMap();
             CreateMap<Guest, UpdateGuestDto>().ReverseMap();
 
-            CreateMap<Booking, BookingDto>().ReverseMap();
+            CreateMap<Booking, BookingDto>()
+                .ForMember(dest => dest.ApartmentName, opt => opt.MapFrom(src =>
+                    src.Apartment != null ? src.Apartment.Name : null));
+            CreateMap<BookingDto, Booking>();
             CreateMap<Booking, CreateBookingDto>().ReverseMap();
             CreateMap<Booking, UpdateBookingDto>().ReverseMap();
 
@@ -43,6 +47,27 @@ namespace HotelManagement.Models.Mappings
                     !string.IsNullOrEmpty(src.SignatureData) ? Convert.FromBase64String(src.SignatureData.Replace("data:image/png;base64,", "")) : null))
                 .ForMember(dest => dest.PdfFileBlob, opt => opt.MapFrom(src =>
                     !string.IsNullOrEmpty(src.PdfData) ? Convert.FromBase64String(src.PdfData.Replace("data:application/pdf;base64,", "")) : null));
+
+            // ApartmentPhoto mappings
+            CreateMap<ApartmentPhoto, ApartmentPhotoDto>();
+
+            // CheckInSession mappings
+            CreateMap<CheckInSession, CheckInSessionDto>()
+                .ForMember(dest => dest.SignatureData, opt => opt.MapFrom(src =>
+                    src.SignatureBlob != null ? Convert.ToBase64String(src.SignatureBlob) : null));
+
+            CreateMap<CreateCheckInSessionDto, CheckInSession>()
+                .ForMember(dest => dest.SignatureBlob, opt => opt.MapFrom(src =>
+                    !string.IsNullOrEmpty(src.SignatureData) ? Convert.FromBase64String(src.SignatureData.Replace("data:image/png;base64,", "")) : null));
+
+            // MaintenanceTask mappings
+            CreateMap<MaintenanceTask, MaintenanceTaskDto>()
+                .ForMember(dest => dest.ApartmentName, opt => opt.MapFrom(src =>
+                    src.Apartment != null ? src.Apartment.Name : null));
+
+            CreateMap<CreateMaintenanceTaskDto, MaintenanceTask>();
+            CreateMap<UpdateMaintenanceTaskDto, MaintenanceTask>()
+                .ForAllMembers(opt => opt.Condition((src, dest, srcMember) => srcMember != null));
 
             CreateMap<ApplicationUser, ApplicationUserDto>();
             CreateMap<ApplicationUser, CreateUserDto>();

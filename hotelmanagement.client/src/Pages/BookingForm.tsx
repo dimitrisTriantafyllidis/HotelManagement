@@ -1,353 +1,206 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Container,
-  Card,
-  CardHeader,
-  CardContent,
-  Typography,
-  TextField,
-  Select,
-  MenuItem,
-  Button,
-  InputLabel,
-  FormControl,
-  Box,
-  Divider,
-  FormHelperText
+  Box, Typography, Button, TextField, Grid,
+  FormControl, InputLabel, Select, MenuItem, Divider,
+  IconButton, CircularProgress, Switch, FormControlLabel,
 } from '@mui/material';
 import {
-  Edit as EditIcon,
-  AddCircle as AddCircleIcon,
-  ArrowBack as ArrowBackIcon,
-  CheckCircle as CheckCircleIcon,
-  Save as SaveIcon,
-  Person as PersonIcon,
-  CalendarToday as CalendarTodayIcon,
-  Phone as PhoneIcon,
-  Email as EmailIcon,
-  Home as HomeIcon
+  Save as SaveIcon, ArrowBack as BackIcon,
+  Person as PersonIcon, CalendarToday as CalendarIcon,
+  Euro as EuroIcon,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { useFormik } from 'formik';
-import * as yup from 'yup';
-import { useNavigate } from 'react-router-dom';
-import { enUS, el } from 'date-fns/locale';
-import { ApartmentDto, BookingDto, GuestDto } from '../models/types';
-import { isUndefined } from 'util';
-import { createBooking } from '../Services/BookingsService';
-import { getApartment, getApartments } from '../Services/ApartmentService';
+import { motion } from 'framer-motion';
+import { useNavigate, useParams } from 'react-router-dom';
+import { el, enUS } from 'date-fns/locale';
+import { useSnackbar } from 'notistack';
+import { ApartmentDto } from '../models/types';
+import { createBooking, getBooking, updateBooking } from '../Services/BookingsService';
+import { getApartments } from '../Services/ApartmentService';
+import { useLanguage } from '../i18n/LanguageContext';
 
+const platforms = ['Direct', 'Airbnb', 'Booking.com', 'VRBO', 'Other'];
+const paymentMethods = ['Cash', 'Card', 'BankTransfer', 'Online'];
+const statuses = ['Confirmed', 'CheckedIn', 'CheckedOut', 'Cancelled'];
 
-
-const BookingForm= () => {
+const BookingForm: React.FC = () => {
   const navigate = useNavigate();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const [apartment, setApartment] = useState<ApartmentDto | null>(null);
-
-  
+  const { id } = useParams<{ id: string }>();
+  const isEdit = Boolean(id);
+  const { t, language } = useLanguage();
+  const { enqueueSnackbar } = useSnackbar();
   const [apartments, setApartments] = useState<ApartmentDto[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const [selectedGuest,setSelectedGuest]= useState<GuestDto>({
-      id: '',
-      fullName: '',
-      identityNo: '',
-      nationality: '',
-      bookingId: ''
+  const [form, setForm] = useState({
+    apartmentId: '', checkInDate: null as Date | null, checkOutDate: null as Date | null,
+    guestFirstName: '', guestLastName: '', guestEmail: '', guestPhone: '',
+    numberOfGuests: 1, guestCountry: '', pricePerNight: 0, cleaningFee: 0, currency: 'EUR',
+    platformSource: 'Direct', paymentMethod: '', notes: '', status: 'Confirmed', isPaid: false,
   });
 
-  const [booking,setBooking]= useState<BookingDto>({
-        id : '',
-        firstName :'',
-        lastName: '',
-        apartmentId: '',
-        email:'',
-        phoneNumber:'',
-        apartment: undefined,
-        checkInDate: null,
-        checkOutDate:  null,
-        guests: undefined,
-        checkIn: undefined
-  });
-
- const validationSchema = yup.object({
-  firstName: yup.string().required('Το όνομα είναι απαραίτητο'),
-  lastName: yup.string().required('Το επώνυμο είναι απαραίτητο'),
-  email: yup.string().email('Εισάγετε ένα έγκυρο email').required('Το email είναι απαραίτητο'),
-  phone: yup.string().required('Το τηλέφωνο είναι απαραίτητο'),
-  
-  checkInDate: yup.date()
-    .transform((value, originalValue) =>
-      originalValue === "" ? null : new Date(originalValue)
-    )
-    .nullable()
-    .required('Η ημερομηνία άφιξης είναι απαραίτητη'),
-
-  checkOutDate: yup.date()
-    .transform((value, originalValue) =>
-      originalValue === "" ? null : new Date(originalValue)
-    )
-    .nullable()
-    .required('Η ημερομηνία αναχώρησης είναι απαραίτητη')
-    .when('checkInDate', (checkInDate, schema) => {
-      return checkInDate
-        ? schema.min(checkInDate, 'Η αναχώρηση πρέπει να είναι μετά την άφιξη')
-        : schema;
-    }),
-
-  apartmentId: yup.string().required('Η επιλογή διαμερίσματος είναι απαραίτητη'),
-});
-
- const formik = useFormik({
-    initialValues: booking,
-    validationSchema: validationSchema,
-    onSubmit: (values) => {
-      setIsSubmitting(true);
-      createBookingObject(values);
-
-
-    },
-  });
-
-  async function createBookingObject(booking: BookingDto): Promise<void> {
-        try {
-          const response = await createBooking(booking);
-
-          if (!response.ok) {
-            throw new Error(`Error: ${response.status}`);
-          }
-
-          const result = await response.json();
-          console.log('Booking created:', result);
-        } catch (error) {
-          console.error('Failed to create booking:', error);
-        }
-  }
+  useEffect(() => { getApartments().then(setApartments).catch(() => {}); }, []);
 
   useEffect(() => {
-      async function fetchApartments() {
-        try {
-          const data = await getApartments(); // data είναι ήδη parsed
-          setApartments(data);
-        } catch (error) {
-          console.error('Αποτυχία:', error);
-        }
-      }
+    if (id) {
+      setLoading(true);
+      getBooking(id).then((b) => {
+        setForm({
+          apartmentId: b.apartmentId, checkInDate: new Date(b.checkInDate), checkOutDate: new Date(b.checkOutDate),
+          guestFirstName: b.guestFirstName || '', guestLastName: b.guestLastName || '',
+          guestEmail: b.guestEmail || '', guestPhone: b.guestPhone || '',
+          numberOfGuests: b.numberOfGuests || 1, guestCountry: b.guestCountry || '',
+          pricePerNight: b.pricePerNight || 0, cleaningFee: b.cleaningFee || 0, currency: b.currency || 'EUR',
+          platformSource: b.platformSource || 'Direct', paymentMethod: b.paymentMethod || '',
+          notes: b.notes || '', status: b.status || 'Confirmed', isPaid: b.isPaid || false,
+        });
+      }).catch(() => enqueueSnackbar('Failed to load booking', { variant: 'error' })).finally(() => setLoading(false));
+    }
+  }, [id]);
 
-      fetchApartments();
-    }, []);
+  const selectedApartment = apartments.find(a => a.id === form.apartmentId);
+  useEffect(() => {
+    if (selectedApartment && !isEdit) {
+      setForm(prev => ({ ...prev, pricePerNight: selectedApartment.pricePerNight || prev.pricePerNight, cleaningFee: selectedApartment.cleaningFee || prev.cleaningFee, currency: selectedApartment.currency || prev.currency }));
+    }
+  }, [form.apartmentId]);
 
+  const nights = useMemo(() => {
+    if (!form.checkInDate || !form.checkOutDate) return 0;
+    return Math.max(1, Math.ceil((form.checkOutDate.getTime() - form.checkInDate.getTime()) / (1000 * 60 * 60 * 24)));
+  }, [form.checkInDate, form.checkOutDate]);
+
+  const totalPrice = form.pricePerNight * nights + form.cleaningFee;
+  const handleChange = (field: string, value: any) => setForm(prev => ({ ...prev, [field]: value }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.apartmentId || !form.checkInDate || !form.checkOutDate) return;
+    setSaving(true);
+    try {
+      if (isEdit && id) { await updateBooking(id, { id, ...form, checkInDate: form.checkInDate!.toISOString(), checkOutDate: form.checkOutDate!.toISOString(), totalPrice }); }
+      else { await createBooking({ ...form, checkInDate: form.checkInDate!.toISOString(), checkOutDate: form.checkOutDate!.toISOString(), totalPrice }); }
+      enqueueSnackbar(t('booking.saved'), { variant: 'success' }); navigate('/bookings');
+    } catch { enqueueSnackbar(isEdit ? 'Failed to update booking' : 'Failed to create booking', { variant: 'error' }); }
+    setSaving(false);
+  };
+
+  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}><CircularProgress sx={{ color: '#C4704B' }} /></Box>;
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={el}>
-      <Container maxWidth="md" sx={{ py: 4 }}>
-        <Card sx={{ borderRadius: 2, boxShadow: 3, overflow: 'hidden' }}>
-          <CardHeader
-            title={
-              <Typography variant="h4" component="div" sx={{ color: 'white', textAlign: 'center' }}>
-                {booking.id ? (
-                  <>
-                    <EditIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
-                    Επεξεργασία Κράτησης
-                  </>
-                ) : (
-                  <>
-                    <AddCircleIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
-                    Δημιουργία Κράτησης
-                  </>
-                )}
-              </Typography>
-            }
-            sx={{
-              bgcolor: 'primary.main',
-              py: 3,
-              background: 'linear-gradient(45deg, #4361ee 30%, #3a56d4 90%)'
-            }}
-          />
+    <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={language === 'el' ? el : enUS}>
+      <Box sx={{ p: { xs: 2, md: 3 }, maxWidth: 880, mx: 'auto' }}>
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+            <IconButton size="small" onClick={() => navigate(-1)} sx={{ color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 2 }}>
+              <BackIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+            <Typography variant="h2" sx={{ color: 'var(--text-primary)' }}>{isEdit ? t('booking.edit') : t('booking.new')}</Typography>
+          </Box>
 
-          <CardContent sx={{ p: { xs: 2, md: 4 } }}>
-            <form onSubmit={formik.handleSubmit}>
-              <Box sx={{ mb: 4 }}>
-                <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
-                  <PersonIcon sx={{ mr: 1, color: 'primary.main' }} />
-                  Στοιχεία Πελάτη
-                </Typography>
-                <Divider sx={{ mb: 3 }} />
+          <Box component="form" onSubmit={handleSubmit} sx={{ bgcolor: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 3, p: 3 }}>
+            <SectionTitle icon={<PersonIcon />} title={t('booking.guestDetails')} />
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+              <Grid size={{ xs: 12, md: 6 }} ><TextField fullWidth label={t('booking.guestFirstName')} value={form.guestFirstName} onChange={(e) => handleChange('guestFirstName', e.target.value)} required /></Grid>
+              <Grid size={{ xs: 12, md: 6 }} ><TextField fullWidth label={t('booking.guestLastName')} value={form.guestLastName} onChange={(e) => handleChange('guestLastName', e.target.value)} required /></Grid>
+              <Grid size={{ xs: 12, md: 4 }} ><TextField fullWidth label={t('booking.guestEmail')} type="email" value={form.guestEmail} onChange={(e) => handleChange('guestEmail', e.target.value)} /></Grid>
+              <Grid size={{ xs: 12, md: 4 }} ><TextField fullWidth label={t('booking.guestPhone')} value={form.guestPhone} onChange={(e) => handleChange('guestPhone', e.target.value)} /></Grid>
+              <Grid size={{ xs: 6, md: 2 }} ><TextField fullWidth label={t('booking.numberOfGuests')} type="number" value={form.numberOfGuests} onChange={(e) => handleChange('numberOfGuests', parseInt(e.target.value) || 1)} inputProps={{ min: 1, max: selectedApartment?.maxGuests || 20 }} /></Grid>
+              <Grid size={{ xs: 6, md: 2 }} ><TextField fullWidth label={t('booking.guestCountry')} value={form.guestCountry} onChange={(e) => handleChange('guestCountry', e.target.value)} /></Grid>
+            </Grid>
 
-                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, mb: 2 }}>
-                  <TextField
-                      fullWidth
-                      id="firstName"
-                      name="firstName"
-                      label="Όνομα"
-                      value={formik.values.firstName}
-                      onChange={formik.handleChange}
-                      onBlur={formik.handleBlur}
-                      error={formik.touched.firstName && Boolean(formik.errors.firstName)}
-                      helperText={formik.touched.firstName && formik.errors.firstName}
-                    />
-
-                  <TextField
-                    fullWidth
-                    id="lastName"
-                    name="lastName"
-                    label="Επώνυμο"
-                    value={formik.values.lastName}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    error={formik.touched.lastName && Boolean(formik.errors.lastName)}
-                    helperText={formik.touched.lastName && formik.errors.lastName}
-                    variant="outlined"
-                    InputProps={{
-                      sx: { borderRadius: 2, height: 56 }
-                    }}
-                  />
-                </Box>
-
-                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, mb: 2 }}>
-                  <TextField
-                    fullWidth
-                    id="email"
-                    name="email"
-                    label="Email"
-                    type="email"
-                    value={formik.values.email}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    error={formik.touched.email && Boolean(formik.errors.email)}
-                    helperText={formik.touched.email && formik.errors.email}
-                    variant="outlined"
-                    InputProps={{
-                      sx: { borderRadius: 2, height: 56 }
-                    }}
-                  />
-
-                  <TextField
-                    fullWidth
-                    id="phoneNumber"
-                    name="phoneNumber"
-                    label="Τηλέφωνο"
-                    value={formik.values.phoneNumber}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    error={formik.touched.phoneNumber && Boolean(formik.errors.phoneNumber)}
-                    helperText={formik.touched.phoneNumber && formik.errors.phoneNumber}
-                    variant="outlined"
-                    InputProps={{
-                      sx: { borderRadius: 2, height: 56 }
-                    }}
-                  />
-                </Box>
-              </Box>
-
-              <Box sx={{ mb: 4 }}>
-                <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
-                  <CalendarTodayIcon sx={{ mr: 1, color: 'primary.main' }} />
-                  Πληροφορίες Κράτησης
-                </Typography>
-                <Divider sx={{ mb: 3 }} />
-
-                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, mb: 2 }}>
-                  <DatePicker
-                    label="Άφιξη"
-                    value={formik.values.checkInDate}
-                    onChange={(value) => formik.setFieldValue('checkInDate', value)}
-                    minDate={new Date()}
-                    slotProps={{
-                      textField: {
-                        fullWidth: true,
-                        error: formik.touched.checkInDate && Boolean(formik.errors.checkInDate),
-                        helperText: formik.touched.checkInDate && formik.errors.checkInDate,
-                      },
-                    }}
-                  />
-
-                  <DatePicker
-                    label="Αναχώρηση"
-                    value={formik.values.checkOutDate}
-                    onChange={(value) => formik.setFieldValue('checkOutDate', value)}
-                    minDate={formik.values.checkInDate || new Date()}
-                    slotProps={{
-                      textField: {
-                        fullWidth: true,
-                        error: formik.touched.checkOutDate && Boolean(formik.errors.checkOutDate),
-                        helperText: formik.touched.checkOutDate && formik.errors.checkOutDate,
-                      },
-                    }}
-                  />
-                </Box>
-
-                <FormControl fullWidth sx={{ mb: 2 }} error={formik.touched.apartmentId && Boolean(formik.errors.apartmentId)}>
-                  <InputLabel id="appartment-label">Διαμέρισμα</InputLabel>
-                  <Select
-                    labelId="appartment-label"
-                    id="apartmentId"
-                    name="name"
-                    value={
-                        apartments.find((a) => a.id === formik.values.apartmentId)?.name || ''
-                      }
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    sx={{ borderRadius: 2, height: 56 }}
-                  >
-                    <MenuItem value="" disabled>
-                      -- Επιλογή Διαμερίσματος --
-                    </MenuItem>
-                    {apartments.map((apartments) => (
-                      <MenuItem key={apartments.id} value={apartments.id}>
-                        {apartments.name}
-                      </MenuItem>
-                    ))}
+            <SectionTitle icon={<CalendarIcon />} title={t('booking.bookingDetails')} />
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+              <Grid size={{ xs: 12, md: 4 }} >
+                <FormControl fullWidth required size="small"><InputLabel>{t('booking.apartment')}</InputLabel>
+                  <Select value={form.apartmentId} label={t('booking.apartment')} onChange={(e) => handleChange('apartmentId', e.target.value)}>
+                    {apartments.map(apt => <MenuItem key={apt.id} value={apt.id}>{apt.name} {apt.pricePerNight ? `(${apt.pricePerNight}/night)` : ''}</MenuItem>)}
                   </Select>
-                  {formik.touched.apartmentId && formik.errors.apartmentId && (
-                    <FormHelperText>{formik.errors.apartmentId}</FormHelperText>
-                  )}
                 </FormControl>
-              </Box>
+              </Grid>
+              <Grid size={{ xs: 6, md: 4 }} ><DatePicker label={t('booking.checkIn')} value={form.checkInDate} onChange={(v) => handleChange('checkInDate', v)} slotProps={{ textField: { fullWidth: true, size: 'small' } }} /></Grid>
+              <Grid size={{ xs: 6, md: 4 }} ><DatePicker label={t('booking.checkOut')} value={form.checkOutDate} onChange={(v) => handleChange('checkOutDate', v)} minDate={form.checkInDate || undefined} slotProps={{ textField: { fullWidth: true, size: 'small' } }} /></Grid>
+              <Grid size={{ xs: 6, md: 4 }} >
+                <FormControl fullWidth size="small"><InputLabel>{t('booking.platform')}</InputLabel>
+                  <Select value={form.platformSource} label={t('booking.platform')} onChange={(e) => handleChange('platformSource', e.target.value)}>
+                    {platforms.map(p => <MenuItem key={p} value={p}>{p}</MenuItem>)}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid size={{ xs: 6, md: 4 }} >
+                <FormControl fullWidth size="small"><InputLabel>{t('booking.paymentMethod')}</InputLabel>
+                  <Select value={form.paymentMethod} label={t('booking.paymentMethod')} onChange={(e) => handleChange('paymentMethod', e.target.value)}>
+                    <MenuItem value="">-</MenuItem>{paymentMethods.map(p => <MenuItem key={p} value={p}>{p}</MenuItem>)}
+                  </Select>
+                </FormControl>
+              </Grid>
+              {isEdit && (
+                <>
+                  <Grid size={{ xs: 6, md: 4 }} >
+                    <FormControl fullWidth size="small"><InputLabel>{t('booking.status')}</InputLabel>
+                      <Select value={form.status} label={t('booking.status')} onChange={(e) => handleChange('status', e.target.value)}>
+                        {statuses.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid size={{ xs: 6, md: 4 }} >
+                    <FormControlLabel control={<Switch checked={form.isPaid} onChange={(e) => handleChange('isPaid', e.target.checked)} />} label={t('booking.isPaid')} sx={{ mt: 0.5 }} />
+                  </Grid>
+                </>
+              )}
+              <Grid size={12} ><TextField fullWidth label={t('booking.notes')} multiline rows={2} value={form.notes} onChange={(e) => handleChange('notes', e.target.value)} /></Grid>
+            </Grid>
 
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
-                <Button
-                  variant="outlined"
-                  color="secondary"
-                  startIcon={<ArrowBackIcon />}
-                  onClick={() => navigate(-1)}
-                  sx={{ borderRadius: 2, px: 3 }}
-                >
-                  Πίσω
-                </Button>
+            <SectionTitle icon={<EuroIcon />} title={t('booking.pricing')} />
+            <Grid container spacing={2} sx={{ mb: 2 }}>
+              <Grid size={{ xs: 6, md: 3 }} ><TextField fullWidth label={t('booking.pricePerNight')} type="number" value={form.pricePerNight} onChange={(e) => handleChange('pricePerNight', parseFloat(e.target.value) || 0)} /></Grid>
+              <Grid size={{ xs: 6, md: 3 }} ><TextField fullWidth label={t('booking.cleaningFee')} type="number" value={form.cleaningFee} onChange={(e) => handleChange('cleaningFee', parseFloat(e.target.value) || 0)} /></Grid>
+            </Grid>
 
-                {booking.id ? (
-                  <Button
-                    type="submit"
-                    variant="contained"
-                    color="primary"
-                    startIcon={<CheckCircleIcon />}
-                    disabled={isSubmitting}
-                    sx={{ borderRadius: 2, px: 3 }}
-                  >
-                    Ενημέρωση
-                  </Button>
-                ) : (
-                  <Button
-                    type="submit"
-                    variant="contained"
-                    color="success"
-                    startIcon={<SaveIcon />}
-                    disabled={isSubmitting}
-                    sx={{ borderRadius: 2, px: 3 }}
-                  >
-                    Δημιουργία
-                  </Button>
+            {nights > 0 && (
+              <Box sx={{ p: 2, borderRadius: 2, mb: 3, bgcolor: 'var(--bg-surface-secondary)', border: '1px solid var(--border)' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                  <Typography variant="body2" sx={{ color: 'var(--text-secondary)' }}>{form.pricePerNight} x {nights} {t('booking.nights')}</Typography>
+                  <Typography variant="body2" sx={{ color: 'var(--text-primary)' }}>{(form.pricePerNight * nights).toFixed(2)}</Typography>
+                </Box>
+                {form.cleaningFee > 0 && (
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ color: 'var(--text-secondary)' }}>{t('booking.cleaningFee')}</Typography>
+                    <Typography variant="body2" sx={{ color: 'var(--text-primary)' }}>{form.cleaningFee.toFixed(2)}</Typography>
+                  </Box>
                 )}
+                <Divider sx={{ my: 1 }} />
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>{t('booking.totalPrice')}</Typography>
+                  <Typography sx={{ fontWeight: 700, color: '#22C55E' }}>{totalPrice.toFixed(2)}</Typography>
+                </Box>
               </Box>
-            </form>
-          </CardContent>
-        </Card>
-      </Container>
+            )}
+
+            <Divider sx={{ mb: 3 }} />
+            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Button variant="outlined" startIcon={<BackIcon sx={{ fontSize: 16 }} />} onClick={() => navigate(-1)}>{t('common.back')}</Button>
+              <Button type="submit" variant="contained" disabled={saving || !form.apartmentId}
+                startIcon={saving ? <CircularProgress size={16} sx={{ color: '#fff' }} /> : <SaveIcon sx={{ fontSize: 16 }} />}
+                sx={{ bgcolor: '#C4704B', '&:hover': { bgcolor: '#A85A38' } }}>
+                {isEdit ? t('common.update') : t('common.create')}
+              </Button>
+            </Box>
+          </Box>
+        </motion.div>
+      </Box>
     </LocalizationProvider>
   );
 };
+
+const SectionTitle: React.FC<{ title: string; icon?: React.ReactNode }> = ({ title, icon }) => (
+  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, mt: 1 }}>
+    {icon && <Box sx={{ color: '#C4704B', display: 'flex', '& svg': { fontSize: 16 } }}>{icon}</Box>}
+    <Typography variant="caption" sx={{ color: 'var(--text-muted)' }}>{title}</Typography>
+  </Box>
+);
 
 export default BookingForm;

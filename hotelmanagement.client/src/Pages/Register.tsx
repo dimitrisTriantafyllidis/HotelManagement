@@ -1,251 +1,125 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Avatar,
-  Box, 
-  Button, 
-  Container, 
-  CssBaseline, 
-  Grid, 
-  Link, 
-  TextField, 
-  Typography,
-  FormControlLabel,
-  Checkbox
+import {
+  Box, Button, TextField, Typography, IconButton, Link,
+  CircularProgress, Alert,
 } from '@mui/material';
-import { createTheme, ThemeProvider } from '@mui/material/styles';
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
-import theme from './theme';
-
-const defaultTheme = createTheme();
+import { Visibility, VisibilityOff, Language as LangIcon } from '@mui/icons-material';
+import { motion } from 'framer-motion';
+import { register } from '../Services/AuthService';
+import { useAuth } from '../auth/AuthContext';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const RegisterPage: React.FC = () => {
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    acceptTerms: false
-  });
-
-  const [errors, setErrors] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    acceptTerms: ''
-  });
-
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [organization, setOrganization] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { login: authLogin } = useAuth();
+  const { t, language, setLanguage } = useLanguage();
 
-  const validateForm = (): boolean => {
-    let isValid = true;
-    const newErrors = {
-      firstName: '',
-      lastName: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-      acceptTerms: ''
-    };
-
-    // First name validation
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = 'First name is required';
-      isValid = false;
-    }
-
-    // Last name validation
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = 'Last name is required';
-      isValid = false;
-    }
-
-    // Email validation
-    if (!formData.email) {
-      newErrors.email = 'Email is required';
-      isValid = false;
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
-      isValid = false;
-    }
-
-    // Password validation
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-      isValid = false;
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters';
-      isValid = false;
-    }
-
-    // Confirm password validation
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-      isValid = false;
-    }
-
-    // Terms and conditions validation
-    if (!formData.acceptTerms) {
-      newErrors.acceptTerms = 'You must accept the terms and conditions';
-      isValid = false;
-    }
-
-    setErrors(newErrors);
-    return isValid;
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-  };
-
-  const handleSubmit = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (validateForm()) {
-      // Here you would typically make an API call to register the user
-      console.log('Registration submitted:', formData);
-      
-      // Redirect to login page after successful registration
-      navigate('/login');
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!fullName) { setError(t('auth.nameRequired')); return; }
+    if (!email) { setError(t('auth.emailRequired')); return; }
+    if (!password || password.length < 6) { setError(t('auth.passwordMin')); return; }
+    if (password !== confirmPassword) { setError(t('auth.passwordMismatch')); return; }
+    setLoading(true);
+    try {
+      const result = await register({ fullName, email, password, organizationName: organization || undefined });
+      authLogin(result);
+      navigate('/');
+    } catch (err: any) {
+      const msg = err?.response?.data;
+      setError(Array.isArray(msg) ? msg.join(', ') : (typeof msg === 'string' ? msg : 'Registration failed'));
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <ThemeProvider theme={theme}>
-      <Container component="main" maxWidth="xs">
-        <CssBaseline />
-        <Box
-          sx={{
-            marginTop: 8,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-          }}
-        >
-          <Avatar sx={{ m: 1, bgcolor: 'secondary.main' }}>
-            <LockOutlinedIcon />
-          </Avatar>
-          <Typography component="h1" variant="h5">
-            Sign up
-          </Typography>
-          <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 3 }}>
-            <Grid  container spacing={2} >
-              <Grid size={12}>
-                <TextField
-                  autoComplete="given-name"
-                  name="firstName"
-                  required
-                  fullWidth
-                  id="firstName"
-                  label="First Name"
-                  autoFocus
-                  value={formData.firstName}
-                  onChange={handleChange}
-                  error={!!errors.firstName}
-                  helperText={errors.firstName}
-                />
-              </Grid>
-              <Grid size={12}>
-                <TextField
-                  required
-                  fullWidth
-                  id="lastName"
-                  label="Last Name"
-                  name="lastName"
-                  autoComplete="family-name"
-                  value={formData.lastName}
-                  onChange={handleChange}
-                  error={!!errors.lastName}
-                  helperText={errors.lastName}
-                />
-              </Grid>
-              <Grid size={12}>
-                <TextField
-                  required
-                  fullWidth
-                  id="email"
-                  label="Email Address"
-                  name="email"
-                  autoComplete="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  error={!!errors.email}
-                  helperText={errors.email}
-                />
-              </Grid>
-              <Grid size={12}>
-                <TextField
-                  required
-                  fullWidth
-                  name="password"
-                  label="Password"
-                  type="password"
-                  id="password"
-                  autoComplete="new-password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  error={!!errors.password}
-                  helperText={errors.password}
-                />
-              </Grid>
-              <Grid size={12}>
-                <TextField
-                  required
-                  fullWidth
-                  name="confirmPassword"
-                  label="Confirm Password"
-                  type="password"
-                  id="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  error={!!errors.confirmPassword}
-                  helperText={errors.confirmPassword}
-                />
-              </Grid>
-              <Grid>
-                <FormControlLabel
-                  control={
-                    <Checkbox 
-                      name="acceptTerms" 
-                      color="primary" 
-                      checked={formData.acceptTerms}
-                      onChange={handleChange}
-                    />
-                  }
-                  label="I accept the terms and conditions"
-                />
-                {errors.acceptTerms && (
-                  <Typography color="error" variant="body2">
-                    {errors.acceptTerms}
-                  </Typography>
-                )}
-              </Grid>
-            </Grid>
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              sx={{ mt: 3, mb: 2 }}
-            >
-              Sign Up
+    <Box sx={{
+      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      bgcolor: 'var(--bg-primary)',
+    }}>
+      <Box sx={{ position: 'absolute', top: 20, right: 20 }}>
+        <IconButton size="small" onClick={() => setLanguage(language === 'en' ? 'el' : 'en')}
+          sx={{ color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 2, px: 1, gap: 0.5 }}>
+          <LangIcon sx={{ fontSize: 16 }} />
+          <Typography sx={{ fontWeight: 600, fontSize: '0.625rem' }}>{language === 'en' ? 'EL' : 'EN'}</Typography>
+        </IconButton>
+      </Box>
+
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+        <Box sx={{
+          width: { xs: 340, sm: 400 }, p: { xs: 3, sm: 4 }, borderRadius: 3,
+          bgcolor: 'var(--bg-surface)', border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow-xl)',
+        }}>
+          <Box sx={{ textAlign: 'center', mb: 3 }}>
+            <Box sx={{
+              width: 40, height: 40, borderRadius: 2, mx: 'auto', mb: 2,
+              background: 'linear-gradient(135deg, #C4704B 0%, #D4A853 100%)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '1rem', fontWeight: 700, color: '#fff',
+            }}>
+              V
+            </Box>
+            <Typography variant="h3" sx={{ mb: 0.5, color: 'var(--text-primary)' }}>{t('auth.registerWelcome')}</Typography>
+            <Typography variant="body2" sx={{ color: 'var(--text-secondary)' }}>{t('auth.registerSubtitle')}</Typography>
+          </Box>
+
+          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+          <Box component="form" onSubmit={handleSubmit}>
+            <Typography variant="caption" sx={{ mb: 0.5, display: 'block', color: 'var(--text-secondary)' }}>{t('auth.fullName')}</Typography>
+            <TextField fullWidth value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="John Doe" sx={{ mb: 2 }} autoFocus />
+
+            <Typography variant="caption" sx={{ mb: 0.5, display: 'block', color: 'var(--text-secondary)' }}>{t('auth.email')}</Typography>
+            <TextField fullWidth type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" sx={{ mb: 2 }} autoComplete="email" />
+
+            <Typography variant="caption" sx={{ mb: 0.5, display: 'block', color: 'var(--text-secondary)' }}>{t('auth.organization')} (optional)</Typography>
+            <TextField fullWidth value={organization} onChange={(e) => setOrganization(e.target.value)} placeholder="My Properties LLC" sx={{ mb: 2 }} />
+
+            <Typography variant="caption" sx={{ mb: 0.5, display: 'block', color: 'var(--text-secondary)' }}>{t('auth.password')}</Typography>
+            <TextField fullWidth type={showPassword ? 'text' : 'password'} value={password}
+              onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" sx={{ mb: 2 }} autoComplete="new-password"
+              InputProps={{
+                endAdornment: (
+                  <IconButton onClick={() => setShowPassword(!showPassword)} edge="end" size="small" sx={{ color: 'var(--text-muted)' }}>
+                    {showPassword ? <VisibilityOff sx={{ fontSize: 16 }} /> : <Visibility sx={{ fontSize: 16 }} />}
+                  </IconButton>
+                ),
+              }}
+            />
+
+            <Typography variant="caption" sx={{ mb: 0.5, display: 'block', color: 'var(--text-secondary)' }}>{t('auth.confirmPassword')}</Typography>
+            <TextField fullWidth type="password" value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" sx={{ mb: 3 }} autoComplete="new-password" />
+
+            <Button type="submit" fullWidth variant="contained" disabled={loading}
+              sx={{ py: 1.25, borderRadius: 2, bgcolor: '#C4704B', '&:hover': { bgcolor: '#A85A38' } }}>
+              {loading ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : t('auth.signUp')}
             </Button>
-            <Grid container justifyContent="flex-end">
-              <Grid>
-                <Link href="/login" variant="body2">
-                  Already have an account? Sign in
-                </Link>
-              </Grid>
-            </Grid>
+          </Box>
+
+          <Box sx={{ mt: 3, pt: 3, textAlign: 'center', borderTop: '1px solid var(--border)' }}>
+            <Typography variant="body2" sx={{ color: 'var(--text-secondary)' }}>
+              {t('auth.hasAccount')}{' '}
+              <Link href="/login" underline="none" sx={{ color: '#C4704B', fontWeight: 600, '&:hover': { color: '#A85A38' } }}>
+                {t('auth.signIn')}
+              </Link>
+            </Typography>
           </Box>
         </Box>
-      </Container>
-    </ThemeProvider>
+      </motion.div>
+    </Box>
   );
 };
 
