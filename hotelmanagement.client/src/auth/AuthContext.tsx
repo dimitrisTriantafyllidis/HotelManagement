@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import { jwtDecode } from 'jwt-decode';
 
 export type UserRole = 'Admin' | 'Manager' | 'User';

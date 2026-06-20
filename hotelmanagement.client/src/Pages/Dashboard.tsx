@@ -9,15 +9,12 @@ import {
   CardHeader,
   Avatar,
   IconButton,
-  Paper,
   Divider,
   List,
   ListItem,
   ListItemAvatar,
   ListItemText,
-  LinearProgress,
   Chip,
-  Skeleton,
   Button
 } from '@mui/material';
 import {
@@ -283,7 +280,7 @@ const Dashboard = () => {
                     nameKey="name"
                     label={({ name, percent } : any) => `${name}: ${(percent * 100).toFixed(0)}%`}
                   >
-                    {statusData.map((entry, index) => (
+                    {statusData.map((_entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
