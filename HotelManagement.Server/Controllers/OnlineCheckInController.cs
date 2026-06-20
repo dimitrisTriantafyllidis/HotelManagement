@@ -1,12 +1,14 @@
 ﻿using AutoMapper;
 using HotelManagement.DataAccess;
 using HotelManagement.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HotelManagement.Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class OnlineCheckInController : Controller
     {
         private readonly BookingContext _context;

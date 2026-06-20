@@ -2,12 +2,14 @@
 using HotelManagement.Models.DTOs.View;
 using HotelManagement.Models.Models;
 using HotelManagement.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using HotelManagement.Models.DTOs.Create;
 
 namespace HotemManagement.Server.Controllers
 {
+    [Authorize(Roles = "Admin")]
     public class UsersController : Controller
     {
         private readonly UserManager<ApplicationUser> _userManager;

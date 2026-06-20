@@ -12,6 +12,7 @@ namespace HotelManagement.Server
             var roleManager = services.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
             var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
             var context = services.GetRequiredService<BookingContext>();
+            var configuration = services.GetRequiredService<IConfiguration>();
 
             // Create roles
             string[] roles = { "Admin", "Manager", "User" };
@@ -21,10 +22,11 @@ namespace HotelManagement.Server
                     await roleManager.CreateAsync(new IdentityRole<Guid>(role));
             }
 
-            // --- Seed Users ---
-            await SeedUser(userManager, "admin@pulseos.com", "Admin123!", "Admin User", "Admin");
-            await SeedUser(userManager, "manager@pulseos.com", "Manager123!", "Maria Papadopoulou", "Manager");
-            await SeedUser(userManager, "staff@pulseos.com", "Staff123!", "Nikos Stavros", "User");
+            // --- Seed Admin User from config/env ---
+            var adminEmail = configuration["SeedSettings:AdminEmail"] ?? "admin@pulseos.com";
+            var adminPassword = configuration["SeedSettings:AdminPassword"] ?? "Admin123!";
+            var adminFullName = configuration["SeedSettings:AdminFullName"] ?? "Admin User";
+            await SeedUser(userManager, adminEmail, adminPassword, adminFullName, "Admin");
 
             // --- Seed Apartments ---
             if (!await context.Apartments.AnyAsync())
@@ -45,9 +47,9 @@ namespace HotelManagement.Server
                         AreaSqMeters = 140,
                         PropertyType = "Villa",
                         Amenities = "[\"WiFi\",\"AC\",\"Pool\",\"Parking\",\"Kitchen\",\"Sea View\",\"BBQ\",\"Garden\"]",
-                        DoorCode = "4821",
+                        DoorCode = "0000",
                         WifiSsid = "Azure-Villa",
-                        WifiPassword = "seaside2024",
+                        WifiPassword = "changeme",
                         CheckInHour = 15,
                         CheckOutHour = 11,
                         Address = "Kalamaki Beach Road 12",
@@ -56,7 +58,7 @@ namespace HotelManagement.Server
                         Country = "Greece",
                         IsActive = true,
                         HouseRules = "No smoking indoors. Quiet hours 23:00-08:00. Max 6 guests.",
-                        CheckInInstructions = "Key lockbox at the front gate. Code: 4821. Welcome basket on the kitchen counter.",
+                        CheckInInstructions = "Key lockbox at the front gate. Welcome basket on the kitchen counter.",
                     },
                     new Apartment
                     {
@@ -72,9 +74,9 @@ namespace HotelManagement.Server
                         AreaSqMeters = 35,
                         PropertyType = "Studio",
                         Amenities = "[\"WiFi\",\"AC\",\"Kitchen\",\"TV\",\"Washer\"]",
-                        DoorCode = "1234",
+                        DoorCode = "0000",
                         WifiSsid = "SunsetStudio",
-                        WifiPassword = "sunset2024",
+                        WifiPassword = "changeme",
                         CheckInHour = 14,
                         CheckOutHour = 11,
                         Address = "25is Avgoustou 45",
@@ -97,9 +99,9 @@ namespace HotelManagement.Server
                         AreaSqMeters = 85,
                         PropertyType = "Suite",
                         Amenities = "[\"WiFi\",\"AC\",\"Parking\",\"Kitchen\",\"Garden\",\"Balcony\",\"Fireplace\"]",
-                        DoorCode = "9876",
+                        DoorCode = "0000",
                         WifiSsid = "OliveGarden-Guest",
-                        WifiPassword = "olives2024",
+                        WifiPassword = "changeme",
                         CheckInHour = 15,
                         CheckOutHour = 10,
                         Address = "Arkadi Road 78",
@@ -123,9 +125,9 @@ namespace HotelManagement.Server
                         AreaSqMeters = 75,
                         PropertyType = "Apartment",
                         Amenities = "[\"WiFi\",\"AC\",\"Kitchen\",\"TV\",\"Balcony\",\"Sea View\",\"Washer\"]",
-                        DoorCode = "5555",
+                        DoorCode = "0000",
                         WifiSsid = "HarborView",
-                        WifiPassword = "harbor2024",
+                        WifiPassword = "changeme",
                         CheckInHour = 15,
                         CheckOutHour = 11,
                         Address = "Akti Koundourou 22",
@@ -148,9 +150,9 @@ namespace HotelManagement.Server
                         AreaSqMeters = 90,
                         PropertyType = "House",
                         Amenities = "[\"WiFi\",\"Parking\",\"Kitchen\",\"Fireplace\",\"Garden\",\"BBQ\"]",
-                        DoorCode = "7777",
+                        DoorCode = "0000",
                         WifiSsid = "MountainRetreat",
-                        WifiPassword = "mountain2024",
+                        WifiPassword = "changeme",
                         CheckInHour = 16,
                         CheckOutHour = 11,
                         Address = "Tzermiado Village",
@@ -174,9 +176,9 @@ namespace HotelManagement.Server
                         AreaSqMeters = 160,
                         PropertyType = "Suite",
                         Amenities = "[\"WiFi\",\"AC\",\"Pool\",\"Parking\",\"Kitchen\",\"Sea View\",\"TV\",\"Balcony\",\"Washer\"]",
-                        DoorCode = "0001",
+                        DoorCode = "0000",
                         WifiSsid = "Elounda-Penthouse",
-                        WifiPassword = "luxury2024",
+                        WifiPassword = "changeme",
                         CheckInHour = 14,
                         CheckOutHour = 12,
                         Address = "Elounda Bay 1",
@@ -199,9 +201,9 @@ namespace HotelManagement.Server
                         AreaSqMeters = 55,
                         PropertyType = "Apartment",
                         Amenities = "[\"WiFi\",\"AC\",\"Kitchen\",\"TV\",\"Washer\"]",
-                        DoorCode = "3333",
+                        DoorCode = "0000",
                         WifiSsid = "OldTownLoft",
-                        WifiPassword = "venetian2024",
+                        WifiPassword = "changeme",
                         CheckInHour = 15,
                         CheckOutHour = 11,
                         Address = "Zambeliou 18",

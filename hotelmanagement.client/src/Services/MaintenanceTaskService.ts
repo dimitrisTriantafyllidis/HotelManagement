@@ -1,44 +1,34 @@
-import axios from 'axios';
+import api from './api';
 import { MaintenanceTaskDto } from '../models/types';
-
-const API_BASE = 'http://localhost:5037/api';
-
-const authHeader = () => {
-  const token = localStorage.getItem('token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
 
 export const getMaintenanceTasks = async (params?: {
   status?: string;
   apartmentId?: string;
   assignedTo?: string;
 }): Promise<MaintenanceTaskDto[]> => {
-  const response = await axios.get(`${API_BASE}/MaintenanceTasks`, {
-    headers: authHeader(),
-    params,
-  });
+  const response = await api.get('/MaintenanceTasks', { params });
   return response.data;
 };
 
 export const getMaintenanceTask = async (id: string): Promise<MaintenanceTaskDto> => {
-  const response = await axios.get(`${API_BASE}/MaintenanceTasks/${id}`, { headers: authHeader() });
+  const response = await api.get(`/MaintenanceTasks/${id}`);
   return response.data;
 };
 
 export const createMaintenanceTask = async (data: any): Promise<MaintenanceTaskDto> => {
-  const response = await axios.post(`${API_BASE}/MaintenanceTasks`, data, { headers: authHeader() });
+  const response = await api.post('/MaintenanceTasks', data);
   return response.data;
 };
 
 export const updateMaintenanceTask = async (id: string, data: any): Promise<void> => {
-  await axios.put(`${API_BASE}/MaintenanceTasks/${id}`, data, { headers: authHeader() });
+  await api.put(`/MaintenanceTasks/${id}`, data);
 };
 
 export const deleteMaintenanceTask = async (id: string): Promise<void> => {
-  await axios.delete(`${API_BASE}/MaintenanceTasks/${id}`, { headers: authHeader() });
+  await api.delete(`/MaintenanceTasks/${id}`);
 };
 
 export const generateCheckoutTasks = async (): Promise<MaintenanceTaskDto[]> => {
-  const response = await axios.post(`${API_BASE}/MaintenanceTasks/generate-checkout-tasks`, {}, { headers: authHeader() });
+  const response = await api.post('/MaintenanceTasks/generate-checkout-tasks', {});
   return response.data;
 };

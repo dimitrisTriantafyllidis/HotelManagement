@@ -4,6 +4,7 @@ using HotelManagement.Models.Models;
 using HotelManagement.Models;
 using HotelManagement.Models.DTOs.View;
 using HotelManagement.Server.Utilities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,6 +12,7 @@ namespace HotelManagement.Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class ApartmentsController : ControllerBase
     {
         private readonly BookingContext _context;

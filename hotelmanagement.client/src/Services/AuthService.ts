@@ -1,24 +1,5 @@
-import axios from 'axios';
+import api from './api';
 import { LoginDto, RegisterUserDto } from '../models/types';
-
-const API_BASE = 'http://localhost:5037/api';
-
-// Global 401 interceptor: clear stale token and redirect to login
-axios.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401 && !error.config?.url?.includes('/Auth/login')) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('roles');
-      localStorage.removeItem('fullName');
-      localStorage.removeItem('email');
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
-      }
-    }
-    return Promise.reject(error);
-  }
-);
 
 export interface AuthResponse {
   token: string;
@@ -29,12 +10,12 @@ export interface AuthResponse {
 }
 
 export const login = async (credentials: LoginDto): Promise<AuthResponse> => {
-  const response = await axios.post<AuthResponse>(`${API_BASE}/Auth/login`, credentials);
+  const response = await api.post<AuthResponse>('/Auth/login', credentials);
   return response.data;
 };
 
 export const register = async (data: RegisterUserDto): Promise<AuthResponse> => {
-  const response = await axios.post<AuthResponse>(`${API_BASE}/Auth/register`, data);
+  const response = await api.post<AuthResponse>('/Auth/register', data);
   return response.data;
 };
 

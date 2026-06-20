@@ -13,6 +13,7 @@ namespace HotelManagement.Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class CheckInSessionsController : ControllerBase
     {
         private readonly BookingContext _context;
@@ -33,6 +34,7 @@ namespace HotelManagement.Server.Controllers
         }
 
         [HttpGet("{id}")]
+        [AllowAnonymous]
         public async Task<ActionResult<CheckInSessionDto>> Get(Guid id)
         {
             var session = await _context.CheckInSessions
@@ -44,6 +46,7 @@ namespace HotelManagement.Server.Controllers
         }
 
         [HttpGet("by-booking/{bookingId}")]
+        [AllowAnonymous]
         public async Task<ActionResult<CheckInSessionDto>> GetByBooking(Guid bookingId)
         {
             var session = await _context.CheckInSessions
@@ -88,6 +91,7 @@ namespace HotelManagement.Server.Controllers
         }
 
         [HttpPost]
+        [AllowAnonymous]
         public async Task<IActionResult> Create(CreateCheckInSessionDto dto)
         {
             var booking = await _context.Bookings.FindAsync(dto.BookingId);
@@ -110,6 +114,7 @@ namespace HotelManagement.Server.Controllers
         /// Called by the guest after drawing their signature.
         /// </summary>
         [HttpPut("{id}/sign")]
+        [AllowAnonymous]
         public async Task<IActionResult> Sign(Guid id, [FromBody] SignTermsDto dto)
         {
             var session = await _context.CheckInSessions.FindAsync(id);
@@ -131,6 +136,7 @@ namespace HotelManagement.Server.Controllers
         /// Admin must still approve before door code is released.
         /// </summary>
         [HttpPut("{id}/verify")]
+        [AllowAnonymous]
         public async Task<IActionResult> Verify(Guid id)
         {
             var session = await _context.CheckInSessions
@@ -255,6 +261,7 @@ namespace HotelManagement.Server.Controllers
         // ── File upload/download endpoints ──
 
         [HttpPost("{id}/id-document")]
+        [AllowAnonymous]
         [RequestSizeLimit(10 * 1024 * 1024)]
         public async Task<IActionResult> UploadIdDocument(Guid id, [FromForm] IFormFile file)
         {
@@ -274,6 +281,7 @@ namespace HotelManagement.Server.Controllers
         }
 
         [HttpPost("{id}/selfie")]
+        [AllowAnonymous]
         [RequestSizeLimit(10 * 1024 * 1024)]
         public async Task<IActionResult> UploadSelfie(Guid id, [FromForm] IFormFile file)
         {
@@ -323,6 +331,7 @@ namespace HotelManagement.Server.Controllers
         /// if the check-in session is verified, admin-approved, AND current time is post-check-in.
         /// </summary>
         [HttpGet("{id}/door-code")]
+        [AllowAnonymous]
         public async Task<ActionResult<DoorCodeResponseDto>> GetDoorCode(Guid id)
         {
             var session = await _context.CheckInSessions

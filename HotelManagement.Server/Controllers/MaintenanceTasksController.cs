@@ -4,6 +4,7 @@ using HotelManagement.Models.DTOs.Create;
 using HotelManagement.Models.DTOs.Update;
 using HotelManagement.Models.DTOs.View;
 using HotelManagement.Models.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,6 +12,7 @@ namespace HotelManagement.Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class MaintenanceTasksController : ControllerBase
     {
         private readonly BookingContext _context;

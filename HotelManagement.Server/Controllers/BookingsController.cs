@@ -11,6 +11,7 @@ namespace HotemManagement.Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class BookingsController : Controller
     {
         private readonly BookingContext _context;
